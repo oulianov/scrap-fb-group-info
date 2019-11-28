@@ -7,12 +7,11 @@ today and the number of members."""
 import urllib.request
 import csv
 import time, random
-from bs4 import BeautifulSoup
 import sys
 
 ### Parameters ###
 
-LIST_OF_ADDRESSES = 'phonenumbers.csv'
+LIST_OF_ADDRESSES = 'pages.csv'
 OUTPUT_FILE = 'output.csv'
 
 # If set to True, will always download pages from LIST_OF_ADDRESSES (even if they have already been downloaded)
@@ -116,38 +115,42 @@ def scrap_from_html(file_name, verbose=True):
     """Reads a downloaded html pages and returns content that matters in our use case."""
     with open(file_name, "r",  encoding="utf-8") as file:
         content = file.read()
+        new_posts, members = None, None
         if len(content)>0: # If file is not empty.
             # Find the number of new posts
             i = content.find('_63om _6qq6')
             c = content[i:i+60]
             new_posts = c[c.find('>')+1:c.find('<')]
-
-            # If the number has a comma in it, we need to remove it. 
-            new_posts = new_posts.replace('\xa0', '')
-
+            def clean(x):
+                # If the number has a comma in it, we need to remove it. 
+                x = x.replace('\xa0', '')
+                try:
+                    x = int(x)
+                except:
+                    x = None
+                return x
+            new_posts = clean(new_posts)
+            
             # Find the number of members
             i = content.find('_63om _6qq6', i+1)
             c = content[i:i+60]
             members = c[c.find('>')+1:c.find('<')]
             members = members.replace('\xa0', '')
-
-
-
-        else:
-                # No results found for this number.
-                return numero, "No result", "No result"
+            members = clean(members)
+            return members, new_posts
 
 ### Script ###
 
 # Read the addresses
 addresses = csv_to_list(LIST_OF_ADDRESSES)
-addresses = filter_addresses(addresses, CORRECT_URL_LENGTH)
+addresses = filter_addresses(addresses, STARTS_WITH)
 
 delete_file_content('errors.txt')
+delete_file_content(OUTPUT_FILE)
 
 for i, address in enumerate(addresses):
-    phone_number = address[61:71]
-    file_name = "downloads/" + phone_number + '.html'
+    group_name = address[len(STARTS_WITH):].replace('/', '')
+    file_name = "downloads/" + group_name + '.html'
     # If the file does not exists, download it. Note that it might already been downloaded before.
     success = False
     if not file_exists(file_name):
@@ -159,19 +162,7 @@ for i, address in enumerate(addresses):
                 errors_file.write(address + '\n')
     if file_exists(file_name) or success:
         print('Processing ', file_name)
-        scraped_data = scrap_from_html(file_name)
+        scraped_data = list(scrap_from_html(file_name))
         # Save this scraped data.
-        append_line_to_csv(scraped_data, OUTPUT_FILE)
-
-hdr = {'User-Agent': 'Mozilla/5.0 (Windows NT 6.2; WOW64) AppleWebKit/537.36 (KHTML like Gecko) Chrome/44.0.2403.155 Safari/537.36',
-        'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8',
-        'Accept-Charset': 'ISO-8859-1,utf-8;q=0.7,*;q=0.3',
-        'Accept-Encoding': 'none',
-        'Accept-Language': 'fr-FR,fr;q=0.8',
-        'Connection': 'keep-alive'}
-
-req = urllib.request.Request('https://www.facebook.com/groups/vagueposting/', headers=hdr)
-with urllib.request.urlopen(req, timeout=15) as page:
-    content = page.read().decode('utf-8')
-    print(content[0:100])
+        append_line_to_csv([address] + [group_name] + scraped_data, OUTPUT_FILE)
 
