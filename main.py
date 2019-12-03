@@ -141,28 +141,29 @@ def scrap_from_html(file_name, verbose=True):
 
 ### Script ###
 
-# Read the addresses
-addresses = csv_to_list(LIST_OF_ADDRESSES)
-addresses = filter_addresses(addresses, STARTS_WITH)
+if __name__ == '__main__':
+    # Read the addresses
+    addresses = csv_to_list(LIST_OF_ADDRESSES)
+    addresses = filter_addresses(addresses, STARTS_WITH)
 
-delete_file_content('errors.txt')
-delete_file_content(OUTPUT_FILE)
+    delete_file_content('errors.txt')
+    delete_file_content(OUTPUT_FILE)
 
-for i, address in enumerate(addresses):
-    group_name = address[len(STARTS_WITH):].replace('/', '')
-    file_name = "downloads/" + group_name + '.html'
-    # If the file does not exists, download it. Note that it might already been downloaded before.
-    success = False
-    if not file_exists(file_name):
-        success = download_html_page(address, file_name)
-        if not success:
-            # Failed to download the file. Add it to the errors.txt file
-            print('Failed to download page : ', address)
-            with open('errors.txt', 'a+') as errors_file:
-                errors_file.write(address + '\n')
-    if file_exists(file_name) or success:
-        print('Processing ', file_name)
-        scraped_data = list(scrap_from_html(file_name))
-        # Save this scraped data.
-        append_line_to_csv([address] + [group_name] + scraped_data, OUTPUT_FILE)
+    for i, address in enumerate(addresses):
+        group_name = address[len(STARTS_WITH):].replace('/', '')
+        file_name = "downloads/" + group_name + '.html'
+        # If the file does not exists, download it. Note that it might already been downloaded before.
+        success = False
+        if not file_exists(file_name):
+            success = download_html_page(address, file_name)
+            if not success:
+                # Failed to download the file. Add it to the errors.txt file
+                print('Failed to download page : ', address)
+                with open('errors.txt', 'a+') as errors_file:
+                    errors_file.write(address + '\n')
+        if file_exists(file_name) or success:
+            print('Processing ', file_name)
+            scraped_data = list(scrap_from_html(file_name))
+            # Save this scraped data.
+            append_line_to_csv([address] + [group_name] + scraped_data, OUTPUT_FILE)
 
